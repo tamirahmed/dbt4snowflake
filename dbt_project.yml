@@ -43,7 +43,7 @@ models:
     # raw:
     #   +schema: raw
     staging:
-      +materialized: incremental
+      # +materialized: incremental
       +schema: staging
     quarantine:
       +schema: quarantine
