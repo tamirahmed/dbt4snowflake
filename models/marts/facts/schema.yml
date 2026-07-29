@@ -1,0 +1,35 @@
+version: 2
+
+models:
+
+  - name: fact_sales
+
+    description: >
+      Sales fact table at order item grain.
+      One record represents one product sold in an order.
+
+    columns:
+
+      - name: sales_key
+        description: "Unique warehouse key"
+        data_tests:
+          - unique
+          - not_null
+
+
+      - name: order_id
+        description: "Source order identifier"
+        data_tests:
+          - not_null
+
+
+      - name: customer_key
+        description: "Customer dimension key"
+
+
+      - name: product_key
+        description: "Product dimension key"
+
+
+      - name: net_sales_amount
+        description: "Revenue after discounts"
