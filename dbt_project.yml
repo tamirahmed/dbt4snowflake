@@ -1,6 +1,8 @@
+
 # Name your project! Project names should contain only lowercase characters
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
+
 name: 'Kiwimart_Analytics'
 version: '1.0.0'
 config-version: 2
@@ -38,10 +40,10 @@ models:
   Kiwimart_Analytics:
     # data_quality:
     #   +materialized: table
-    raw:
-      +schema: raw
+    # raw:
+    #   +schema: raw
     staging:
-      +materialized: table
+      +materialized: incremental
       +schema: staging
     quarantine:
       +schema: quarantine
@@ -53,3 +55,6 @@ models:
     #   +materialized: table
     # intermediate:
     #   +materialized: table
+snapshots:
+  Kiwimart_Analytics:
+    +schema: snapshots
