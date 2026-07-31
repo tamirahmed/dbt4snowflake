@@ -1,175 +1,124 @@
 {{ config(
     materialized='incremental',
-    unique_key='quality_issue_key'
+    unique_key='quality_issue_id'
 ) }}
 
 
--- =====================================================
--- CUSTOMER LEVEL QUALITY ISSUES
--- =====================================================
+WITH customers AS (
+
+    SELECT
+        customer_id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        region,
+        status,
+        signup_date,
+        updated_at
+
+    FROM {{ source('raw','customers') }}
+
+    {% if is_incremental() %}
+
+    WHERE updated_at >= (
+        SELECT MAX(updated_at)
+        FROM {{ this }}
+    )
+
+    {% endif %}
+
+),
 
 
--- Duplicate emails
+issues AS (
+
+    SELECT
+        customer_id,
+        'MISSING_PHONE' AS issue_type,
+        'Phone number is missing' AS issue_description,
+        updated_at
+
+    FROM customers
+
+    WHERE phone IS NULL
+
+
+    UNION ALL
+
+
+    SELECT
+        customer_id,
+        'MISSING_REGION',
+        'Region is missing',
+        updated_at
+
+    FROM customers
+
+    WHERE region IS NULL
+
+
+    UNION ALL
+
+
+    SELECT
+        customer_id,
+        'INVALID_EMAIL',
+        'Email format is invalid',
+        updated_at
+
+    FROM customers
+
+    WHERE email IS NULL
+       OR email NOT LIKE '%@%'
+
+
+    UNION ALL
+
+
+    SELECT
+        customer_id,
+        'INVALID_STATUS',
+        'Customer status is invalid',
+        updated_at
+
+    FROM customers
+
+    WHERE status NOT IN ('ACTIVE','INACTIVE')
+
+
+    UNION ALL
+
+
+    SELECT
+        customer_id,
+        'FUTURE_SIGNUP_DATE',
+        'Signup date is in the future',
+        updated_at
+
+    FROM customers
+
+    WHERE signup_date > CURRENT_DATE()
+
+)
+
 
 SELECT
 
-    HASH(
-        customer_id,
-        'DUPLICATE_EMAIL'
-    ) AS quality_issue_key,
+    MD5(
+        CONCAT(
+            customer_id,
+            issue_type,
+            updated_at
+        )
+    ) AS quality_issue_id,
 
     customer_id,
+    issue_type,
+    issue_description,
 
-    updated_at AS source_updated_at,
-
-    'DUPLICATE_EMAIL' AS error_code,
-
-    'Customer email is duplicated' AS error_description,
+    updated_at,
 
     CURRENT_TIMESTAMP() AS detected_at
 
-FROM {{ ref('stg_customers') }}
-
-WHERE email IN
-(
-    SELECT email
-
-    FROM {{ ref('stg_customers') }}
-
-    WHERE email IS NOT NULL
-
-    GROUP BY email
-
-    HAVING COUNT(*) > 1
-)
-
-
-{% if is_incremental() %}
-
-AND updated_at >
-(
-    SELECT MAX(source_updated_at)
-    FROM {{ this }}
-)
-
-{% endif %}
-
-
-
-UNION ALL
-
-
-
--- Missing region
-
-SELECT
-
-    HASH(
-        customer_id,
-        'MISSING_REGION'
-    ) AS quality_issue_key,
-
-    customer_id,
-
-    updated_at AS source_updated_at,
-
-    'MISSING_REGION' AS error_code,
-
-    'Customer region is missing' AS error_description,
-
-    CURRENT_TIMESTAMP() AS detected_at
-
-FROM {{ ref('stg_customers') }}
-
-WHERE region IS NULL
-
-
-{% if is_incremental() %}
-
-AND updated_at >
-(
-    SELECT MAX(source_updated_at)
-    FROM {{ this }}
-)
-
-{% endif %}
-
-
-
-UNION ALL
-
-
-
--- Missing phone
-
-SELECT
-
-    HASH(
-        customer_id,
-        'MISSING_PHONE'
-    ) AS quality_issue_key,
-
-    customer_id,
-
-    updated_at AS source_updated_at,
-
-    'MISSING_PHONE' AS error_code,
-
-    'Customer phone is missing' AS error_description,
-
-    CURRENT_TIMESTAMP() AS detected_at
-
-FROM {{ ref('stg_customers') }}
-
-WHERE phone IS NULL
-
-
-{% if is_incremental() %}
-
-AND updated_at >
-(
-    SELECT MAX(source_updated_at)
-    FROM {{ this }}
-)
-
-{% endif %}
-
-
-
-UNION ALL
-
-
-
--- Future signup date
-
-SELECT
-
-    HASH(
-        customer_id,
-        'FUTURE_SIGNUP_DATE'
-    ) AS quality_issue_key,
-
-    customer_id,
-
-    updated_at AS source_updated_at,
-
-    'FUTURE_SIGNUP_DATE' AS error_code,
-
-    'Customer signup date is in the future' AS error_description,
-
-    CURRENT_TIMESTAMP() AS detected_at
-
-FROM {{ ref('stg_customers') }}
-
-WHERE signup_date > CURRENT_DATE()
-
-
-{% if is_incremental() %}
-
-AND updated_at >
-(
-    SELECT MAX(source_updated_at)
-    FROM {{ this }}
-)
-
-{% endif %}
+FROM issues
