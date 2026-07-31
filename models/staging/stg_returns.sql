@@ -1,6 +1,7 @@
 {{ config(
     materialized='incremental',
-    unique_key='return_id'
+    unique_key='return_id',
+    enabled=false
 ) }}
 
 SELECT

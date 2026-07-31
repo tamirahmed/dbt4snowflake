@@ -1,0 +1,39 @@
+version: 2
+sources:
+  - name: raw
+    database: KIWIMART_DB
+    schema: RAW
+
+    tables:
+      - name: customers
+        columns:
+          - name: customer_id
+            tests:
+              - unique
+              - not_null
+          - name: status
+            tests:
+              - accepted_values:
+                  arguments:
+                    values: ['ACTIVE','INACTIVE']
+                  config:
+                    severity: warn
+          - name: updated_at
+
+               
+      - name: products
+      - name: orders
+        config:
+          freshness:
+            warn_after:
+              count: 5
+              period: minute
+            error_after:
+              count: 10
+              period: minute
+          loaded_at_field: updated_at
+
+      - name: order_items
+      - name: stores
+      - name: inventory
+      # - name: returns
