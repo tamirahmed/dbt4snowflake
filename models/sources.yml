@@ -28,9 +28,9 @@ sources:
             warn_after:
               count: 5
               period: minute
-            error_after:
-              count: 10
-              period: minute
+            # error_after:
+            #   count: 10
+            #   period: minute
           loaded_at_field: updated_at
 
       - name: order_items
