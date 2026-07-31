@@ -1,0 +1,29 @@
+version: 2
+
+exposures:
+
+  - name: kiwimart_sales_streamlit_app
+
+    label: KiwiMart Sales Analytics Streamlit App
+
+    type: application
+
+    maturity: high
+
+    url: "https://app.snowflake.com/streamlit/mqolbkj/tsb26837/#/apps/tz4rldwgyn6ikbtlgtr2"
+
+    description: >
+      Streamlit application providing sales analytics,
+      customer insights, product performance, and
+      operational reporting for KiwiMart.
+
+    depends_on:
+
+      - ref('fact_sales')
+      - ref('dim_customer')
+      - ref('dim_product')
+      - ref('dim_store')
+
+    owner:
+
+      name: Tamer

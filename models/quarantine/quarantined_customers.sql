@@ -1,13 +1,26 @@
 {{ config(
-    materialized='table'
+    materialized='incremental',
+    unique_key='quality_issue_key'
 ) }}
+
+
+-- =====================================================
+-- CUSTOMER LEVEL QUALITY ISSUES
+-- =====================================================
 
 
 -- Duplicate emails
 
 SELECT
 
+    HASH(
+        customer_id,
+        'DUPLICATE_EMAIL'
+    ) AS quality_issue_key,
+
     customer_id,
+
+    updated_at AS source_updated_at,
 
     'DUPLICATE_EMAIL' AS error_code,
 
@@ -17,9 +30,29 @@ SELECT
 
 FROM {{ ref('stg_customers') }}
 
-GROUP BY customer_id, email
+WHERE email IN
+(
+    SELECT email
 
-HAVING COUNT(*) > 1
+    FROM {{ ref('stg_customers') }}
+
+    WHERE email IS NOT NULL
+
+    GROUP BY email
+
+    HAVING COUNT(*) > 1
+)
+
+
+{% if is_incremental() %}
+
+AND updated_at >
+(
+    SELECT MAX(source_updated_at)
+    FROM {{ this }}
+)
+
+{% endif %}
 
 
 
@@ -31,7 +64,14 @@ UNION ALL
 
 SELECT
 
+    HASH(
+        customer_id,
+        'MISSING_REGION'
+    ) AS quality_issue_key,
+
     customer_id,
+
+    updated_at AS source_updated_at,
 
     'MISSING_REGION' AS error_code,
 
@@ -44,6 +84,17 @@ FROM {{ ref('stg_customers') }}
 WHERE region IS NULL
 
 
+{% if is_incremental() %}
+
+AND updated_at >
+(
+    SELECT MAX(source_updated_at)
+    FROM {{ this }}
+)
+
+{% endif %}
+
+
 
 UNION ALL
 
@@ -53,7 +104,14 @@ UNION ALL
 
 SELECT
 
+    HASH(
+        customer_id,
+        'MISSING_PHONE'
+    ) AS quality_issue_key,
+
     customer_id,
+
+    updated_at AS source_updated_at,
 
     'MISSING_PHONE' AS error_code,
 
@@ -66,6 +124,17 @@ FROM {{ ref('stg_customers') }}
 WHERE phone IS NULL
 
 
+{% if is_incremental() %}
+
+AND updated_at >
+(
+    SELECT MAX(source_updated_at)
+    FROM {{ this }}
+)
+
+{% endif %}
+
+
 
 UNION ALL
 
@@ -75,7 +144,14 @@ UNION ALL
 
 SELECT
 
+    HASH(
+        customer_id,
+        'FUTURE_SIGNUP_DATE'
+    ) AS quality_issue_key,
+
     customer_id,
+
+    updated_at AS source_updated_at,
 
     'FUTURE_SIGNUP_DATE' AS error_code,
 
@@ -86,3 +162,14 @@ SELECT
 FROM {{ ref('stg_customers') }}
 
 WHERE signup_date > CURRENT_DATE()
+
+
+{% if is_incremental() %}
+
+AND updated_at >
+(
+    SELECT MAX(source_updated_at)
+    FROM {{ this }}
+)
+
+{% endif %}
