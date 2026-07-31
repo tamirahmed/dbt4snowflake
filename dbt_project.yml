@@ -38,10 +38,6 @@ clean-targets:         # directories to be removed by `dbt clean`
 
 models:
   Kiwimart_Analytics:
-    # data_quality:
-    #   +materialized: table
-    # raw:
-    #   +schema: raw
     staging:
       # +materialized: incremental
       +schema: staging
