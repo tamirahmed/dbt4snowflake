@@ -1,149 +1,50 @@
 {{ config(
     materialized='incremental',
-    unique_key='quality_issue_id'
+    unique_key='duplicate_issue_id'
 ) }}
 
 
-WITH changed_customers AS (
-
-    SELECT *
-
+WITH customers AS (
+    SELECT
+        customer_id,email,phone,updated_at
     FROM {{ source('raw','customers') }}
 
     {% if is_incremental() %}
-
     WHERE updated_at >= (
-        SELECT MAX(updated_at)
+        SELECT COALESCE(MAX(source_updated_at), '1900-01-01')
         FROM {{ this }}
     )
 
     {% endif %}
-
 ),
 
 
-duplicate_emails AS (
-
+duplicate_customers AS (
+    -- Same email
     SELECT
-        c.email
+        customer_id, 'DUPLICATE_EMAIL' AS issue_type,
+        email AS duplicate_value,
+        updated_at AS source_updated_at
+    FROM customers
+    WHERE email IS NOT NULL
+    QUALIFY COUNT(*) OVER (PARTITION BY email) > 1
 
-    FROM {{ source('raw','customers') }} c
+    UNION ALL
 
-    INNER JOIN changed_customers cc
-        ON c.email = cc.email
-
-    WHERE c.email IS NOT NULL
-
-    GROUP BY c.email
-
-    HAVING COUNT(*) > 1
-
-),
-
-
-duplicate_phones AS (
-
+    -- Same phone
     SELECT
-        c.phone
-
-    FROM {{ source('raw','customers') }} c
-
-    INNER JOIN changed_customers cc
-        ON c.phone = cc.phone
-
-    WHERE c.phone IS NOT NULL
-
-    GROUP BY c.phone
-
-    HAVING COUNT(*) > 1
-
-),
-
-
-email_issues AS (
-
-    SELECT
-
-        c.customer_id,
-
-        'DUPLICATE_EMAIL' AS issue_type,
-
-        'Email exists on multiple customers' AS issue_description,
-
-        c.email AS duplicate_value,
-
-        c.updated_at
-
-    FROM {{ source('raw','customers') }} c
-
-    INNER JOIN duplicate_emails d
-        ON c.email = d.email
-
-),
-
-
-phone_issues AS (
-
-    SELECT
-
-        c.customer_id,
-
-        'DUPLICATE_PHONE' AS issue_type,
-
-        'Phone exists on multiple customers' AS issue_description,
-
-        c.phone AS duplicate_value,
-
-        c.updated_at
-
-    FROM {{ source('raw','customers') }} c
-
-    INNER JOIN duplicate_phones d
-        ON c.phone = d.phone
+        customer_id,'DUPLICATE_PHONE' AS issue_type,
+        phone AS duplicate_value,updated_at AS source_updated_at
+    FROM customers
+    WHERE phone IS NOT NULL
+    QUALIFY COUNT(*) OVER (PARTITION BY phone) > 1
 
 )
 
-
 SELECT
-
     MD5(
-        CONCAT(
-            customer_id,
-            issue_type,
-            duplicate_value
-        )
-    ) AS quality_issue_id,
-
-    customer_id,
-    issue_type,
-    issue_description,
-    duplicate_value,
-    updated_at,
-
+        CONCAT(customer_id,issue_type,duplicate_value)
+    ) AS duplicate_issue_id,
+    customer_id,issue_type,duplicate_value,source_updated_at,
     CURRENT_TIMESTAMP() AS detected_at
-
-
-FROM email_issues
-
-
-UNION ALL
-
-
-SELECT
-
-    MD5(
-        CONCAT(
-            customer_id,
-            issue_type,
-            duplicate_value
-        )
-    ),
-
-    customer_id,
-    issue_type,
-    issue_description,
-    duplicate_value,
-    updated_at,
-    CURRENT_TIMESTAMP()
-
-FROM phone_issues
+FROM duplicate_customers
