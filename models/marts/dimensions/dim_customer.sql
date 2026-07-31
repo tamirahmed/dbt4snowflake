@@ -37,7 +37,7 @@ SELECT
     END AS data_quality_status,
 
 
-    q.error_code AS data_quality_issue,
+    q.issue_type AS data_quality_issue,
 
 
     CURRENT_TIMESTAMP() AS created_at
@@ -52,8 +52,8 @@ LEFT JOIN (
 
         customer_id,
 
-        LISTAGG(error_code, ', ')
-            WITHIN GROUP (ORDER BY error_code) AS error_code
+        LISTAGG(issue_type, ', ')
+            WITHIN GROUP (ORDER BY issue_type) AS issue_type
 
     FROM {{ ref('quarantined_customers') }}
 
