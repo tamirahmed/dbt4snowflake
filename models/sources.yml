@@ -24,7 +24,6 @@ sources:
       - name: products
       - name: orders        
         config:
-          loaded_at_field: updated_at
           freshness:
             warn_after:
               count: 5
@@ -32,7 +31,7 @@ sources:
             # error_after:
             #   count: 10
             #   period: minute
-
+          loaded_at_field: updated_at
       - name: order_items
       - name: stores
       - name: inventory
