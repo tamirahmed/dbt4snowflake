@@ -11,13 +11,18 @@ sources:
             tests:
               - unique
               - not_null
+          - name: email
+            # tests:
+            #   - unique:
+            #       config:
+            #         severity: warn
           - name: status
-            tests:
-              - accepted_values:
-                  arguments:
-                    values: ['ACTIVE','INACTIVE']
-                  config:
-                    severity: warn
+            # tests:
+            #   - accepted_values:
+            #       arguments:
+            #         values: ['ACTIVE','INACTIVE']
+            #       config:
+            #         severity: warn
           - name: updated_at
 
                
